@@ -1,0 +1,12 @@
+doctype html
+
+html
+	head
+		meta(charset='utf8')
+		title STL viewer
+		link(rel='stylesheet', href='style.css')
+	body(ng-app='stlviewer')
+		div(ng-controller='viewer')
+		canvas(width='960', height='600', stl-viewer, data='stl.triangles', orientation='view.orientation', zoom='view.zoom')
+		script(src='vendor.js')
+		script(src='client.js')

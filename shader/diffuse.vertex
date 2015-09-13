@@ -1,0 +1,14 @@
+attribute vec3 position;
+attribute vec3 normal;
+uniform vec3 ambient_light_color;
+uniform vec3 diffuse_light_direction;
+uniform vec3 diffuse_light_color;
+uniform mat4 transform;
+varying vec4 color;
+
+void main() {
+	gl_Position = transform * vec4(position, 1.0);
+	float diffuse_dir = (1.0 + dot(diffuse_light_direction, normal)) / 2.0;
+	vec3 color_raw = ambient_light_color + diffuse_light_color * diffuse_dir;
+	color = vec4(clamp(color_raw, 0.0, 1.0), 1.0);
+}

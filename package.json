@@ -1,0 +1,21 @@
+{
+  "name": "stlview",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mark K Cowan",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "battlemake": "battlesnake/battlemake",
+    "gulp": "^3.9.0"
+  },
+  "dependencies": {
+    "angular": "^1.4.5",
+    "lodash": "^3.10.1",
+    "stream": "0.0.2",
+    "vektor": "^0.3.0"
+  }
+}
