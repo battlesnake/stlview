@@ -1,137 +1,6 @@
 module.exports = shader;
 
-function ShaderProperty(gl, program, name, type) {
-	this.name = name;
-	this.type = type;
-
-	this.getLocation = getLocation;
-
-	var location;
-
-	return;
-
-	function getLocation() {
-		if (!location) {
-			this.updateLocation();
-		}
-		return location;
-	}
-}
-
-function ShaderAttribute(gl, program, name, type) {
-	ShaderProperty.apply(this, arguments);
-
-	var enabled = false;
-
-	this.updateLocation = updateLocation;
-	this.enable = enable;
-	this.disable = disable;
-	this.bind = bind;
-
-	return Object.freeze(this);
-
-	function updateLocation() {
-		return gl.getAttribLocation(program, name);
-	}
-
-	function enable() {
-		gl.enableVertexAttribArray(this.getLocation());
-		enabled = true;
-	}
-
-	function disable() {
-		gl.disableVertexAttribArray(this.getLocation());
-		enabled = false;
-	}
-
-	function bind(buffer) {
-		if (!enabled) {
-			enable();
-		}
-		buffer.bind();
-		gl.vertexAttribPointer(this.getLocation(), buffer.width, buffer.typeCode, false, 0, 0);
-	}
-}
-
-function ShaderUniform(gl, program, name, type) {
-	ShaderProperty.apply(this, arguments);
-
-	var setter;
-	switch (type) {
-		case "int": setter = "uniform1iv"; break;
-		case "float":
-		case "vec1": setter = "uniform1fv"; break;
-		case "vec2": setter = "uniform2fv"; break;
-		case "vec3": setter = "uniform3fv"; break;
-		case "vec4": setter = "uniform4fv"; break;
-		case "mat1": setter = "uniformMatrix1fv"; break;
-		case "mat2": setter = "uniformMatrix2fv"; break;
-		case "mat3": setter = "uniformMatrix3fv"; break;
-		case "mat4": setter = "uniformMatrix4fv"; break;
-		default: setter = "<error>"; break;
-	}
-	if (!gl[setter]) {
-		throw new Error('Unsupported GLSL data type: "' + type + '"');
-	}
-	var setFunc = gl[setter];
-
-	this.updateLocation = updateLocation;
-	this.assign = setValue;
-
-	return Object.freeze(this);
-
-	function updateLocation() {
-		return gl.getUniformLocation(program, name);
-	}
-
-	function setValue(value) {
-		if (value instanceof Array) {
-			value = [].concat.apply([], value);
-		}
-		setFunc.call(gl, this.getLocation(), false, value);
-	}
-}
-
-function ShaderProgram(gl, program, vs, fs) {
-	var attrRx = /;\s*attribute\s+(\S+)\s+(\S+)\b/g;
-	var uniformRx = /;\s*uniform\s+(\S+)\s+(\S+)\b/g;
-	var source = ';' + vs.source + ';\n' + fs.source;
-	var match;
-	var vars = {}, varArray = [];
-	while ((match = attrRx.exec(source))) {
-		pushVar(new ShaderAttribute(gl, program, match[2], match[1]));
-	}
-	while ((match = uniformRx.exec(source))) {
-		pushVar(new ShaderUniform(gl, program, match[2], match[1]));
-	}
-	this.program = program;
-	this.use = use;
-	this.get = getVariable;
-
-	return Object.freeze(this);
-
-	function getVariable(name) {
-		var v = vars['var_' + name];
-		if (!v) {
-			throw new Error('Variable "' + name + '" does not exist');
-		}
-		return v;
-	}
-
-	function pushVar(v) {
-		vars['var_' + v.name] = v;
-		varArray.push(v);
-	}
-
-	function use() {
-		gl.useProgram(program);
-		varArray.forEach(function (v) {
-			v.updateLocation();
-		});
-	}
-}
-
-function shader($cacheFactory, $http, $q) {
+function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 	var idx = 0;
 
 	return ShaderRepository;
@@ -192,4 +61,195 @@ function shader($cacheFactory, $http, $q) {
 		}
 
 	}
+
+	function ShaderProperty(gl, program, name, type) {
+		this.name = name;
+		this.type = type;
+
+		this.getLocation = getLocation;
+		this.refreshLocation = refreshLocation;
+
+		var location;
+
+		return;
+
+		function refreshLocation() {
+			location = this.updateLocation();
+			if (location === null) {
+				throw new Error('Failed to get shader ' + this.form + ' location for ' + type + ' ' + name);
+			}
+		}
+
+		function getLocation() {
+			if (!location) {
+				this.refreshLocation();
+			}
+			return location;
+		}
+	}
+
+	function ShaderAttribute(gl, program, name, type) {
+		ShaderProperty.apply(this, arguments);
+
+		var enabled = false;
+
+		this.form = 'attribute';
+		this.updateLocation = updateLocation;
+		this.enable = enable;
+		this.disable = disable;
+		this.bind = bind;
+		this.set = set;
+
+		return Object.freeze(this);
+
+		function updateLocation() {
+			var loc = gl.getAttribLocation(program, name);
+			return loc !== -1 ? loc : null;
+		}
+
+		function enable() {
+			gl.enableVertexAttribArray(this.getLocation());
+			enabled = true;
+		}
+
+		function disable() {
+			gl.disableVertexAttribArray(this.getLocation());
+			enabled = false;
+		}
+
+		function bind(buffer) {
+			if (!(buffer instanceof VertexBuffer)) {
+				console.info(buffer);
+				throw new Error('Vertex buffer expected');
+			}
+			if (!enabled) {
+				this.enable();
+			}
+			buffer.bind();
+			gl.vertexAttribPointer(this.getLocation(), buffer.width, buffer.typeCode, false, 0, 0);
+		}
+
+		function set() {
+			throw new Error('Cannot <set> shader attribute, use <bind> instead');
+		}
+	}
+
+	function ShaderUniform(gl, program, name, type) {
+		ShaderProperty.apply(this, arguments);
+
+		this.form = 'uniform';
+
+		var setterName, width;
+		switch (type) {
+			case "int": setterName = "uniform1iv"; width = 1; break;
+			case "float":
+			case "vec1": setterName = "uniform1fv"; width = 1; break;
+			case "vec2": setterName = "uniform2fv"; width = 2; break;
+			case "vec3": setterName = "uniform3fv"; width = 3; break;
+			case "vec4": setterName = "uniform4fv"; width = 4; break;
+			case "mat1": setterName = "uniformMatrix1fv"; width = 1; break;
+			case "mat2": setterName = "uniformMatrix2fv"; width = 2; break;
+			case "mat3": setterName = "uniformMatrix3fv"; width = 3; break;
+			case "mat4": setterName = "uniformMatrix4fv"; width = 4; break;
+			default: setterName = "<error>"; break;
+		}
+		var setFunc = gl[setterName];
+		if (!setFunc) {
+			throw new Error('Unsupported GLSL data type: "' + type + '"');
+		}
+		var setter;
+		if (setterName.indexOf('Matrix') !== -1) {
+			setter = function (value) {
+				if (!(value instanceof Matrix)) {
+					throw new Error('Matrix required');
+				}
+				if (value.width !== width || !value.isSquare) {
+					console.log(width, value);
+					throw new Error('Matrix is the wrong size');
+				}
+				value = value.transpose().data;
+				return setFunc.call(gl, this.getLocation(), gl.FALSE, new Float32Array(value));
+			};
+		} else {
+			setter = function (value) {
+				if (value instanceof Matrix) {
+					value = value.data;
+				} else if (typeof value === 'number') {
+					value = [value];
+				}
+				return setFunc.call(gl, this.getLocation(), new Float32Array(value));
+			};
+		}
+
+		this.updateLocation = updateLocation;
+		this.assign = setValue;
+		this.set = setValue;
+		this.bind = bind;
+
+		return Object.freeze(this);
+
+		function updateLocation() {
+			return gl.getUniformLocation(program, name);
+		}
+
+		function setValue(value) {
+			if (value instanceof Array) {
+				value = [].concat.apply([], value);
+			}
+			return setter.call(this, value);
+		}
+
+		function bind() {
+			throw new Error('Cannot <bind> shader uniform, use <set> instead');
+		}
+	}
+
+	function ShaderProgram(gl, program, vs, fs) {
+		var attrRx = /;\s*attribute\s+(\S+)\s+(\S+)\b/g;
+		var uniformRx = /;\s*uniform\s+(\S+)\s+(\S+)\b/g;
+		var source = ';' + vs.source + ';\n' + fs.source;
+		var match;
+		var vars = {}, varArray = [];
+		while ((match = attrRx.exec(source))) {
+			pushVar(new ShaderAttribute(gl, program, match[2], match[1]));
+		}
+		while ((match = uniformRx.exec(source))) {
+			pushVar(new ShaderUniform(gl, program, match[2], match[1]));
+		}
+		this.program = program;
+		this.use = use;
+		this.get = getVariable;
+		this.enableAll = enableAll;
+
+		return Object.freeze(this);
+
+		function getVariable(name) {
+			var v = vars['var_' + name];
+			if (!v) {
+				throw new Error('Variable "' + name + '" does not exist');
+			}
+			return v;
+		}
+
+		function enableAll() {
+			varArray.forEach(function (v) {
+				if (v instanceof ShaderAttribute) {
+					v.enable();
+				}
+			});
+		}
+
+		function pushVar(v) {
+			vars['var_' + v.name] = v;
+			varArray.push(v);
+		}
+
+		function use() {
+			gl.useProgram(program);
+			varArray.forEach(function (v) {
+				v.updateLocation();
+			});
+		}
+	}
+
 }

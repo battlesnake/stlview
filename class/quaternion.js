@@ -1,54 +1,107 @@
-var Mat = require('vektor').matrix;
-
 module.exports = quaternion;
 
 function quaternion() {
+
+	function Quaternion(axis, angle) {
+		var r, i, j, k;
+		if (arguments.length === 4) {
+			r = arguments[0];
+			i = arguments[1];
+			j = arguments[2];
+			k = arguments[3];
+		} else if (arguments.length === 2) {
+			var c = Math.cos(angle / 2);
+			var s = Math.sin(angle / 2);
+			r = c;
+			i = s * axis[0];
+			j = s * axis[1];
+			k = s * axis[2];
+		} else if (arguments.length === 1 && axis.length === 4) {
+			r = axis[0];
+			i = axis[1];
+			j = axis[2];
+			k = axis[3];
+		} else if (arguments.length === 0) {
+			r = 1;
+			i = 0;
+			j = 0;
+			k = 0;
+		} else {
+			throw new Error('Invalid constructor arguments for quaternion');
+		}
+		if (!(isFinite(i) && isFinite(j) && isFinite(k) && isFinite(r))) {
+			console.log(arguments, this);
+			throw new Error('Quaternion members must be finite numbers');
+		}
+		if (!(this instanceof Quaternion)) {
+			return new Quaternion(r, i, j, k);
+		}
+		this.data = Object.freeze([r, i, j, k]);
+		return Object.freeze(this);
+	}
+
+	Quaternion.prototype = {
+		mul: quaternionMul,
+		scale: quaternionScale,
+		norm2: quaternionNorm2,
+		norm: quaternionNorm,
+		unit: quaternionUnit,
+		scaleTo: quaternionScaleTo
+	};
+
+	function assertQuaternion(x) {
+		if (!(x instanceof Quaternion)) {
+			throw new Error('Quaternion expected');
+		}
+	}
+
+	function quaternionMul(x) {
+		if (typeof x === 'number') {
+			return this.scale(x);
+		}
+		assertQuaternion(x);
+		var r = this.data[0], i = this.data[1], j = this.data[2], k = this.data[3];
+		var R = x.data[0], I = x.data[1], J = x.data[2], K = x.data[3];
+		return new Quaternion(
+			r*R - i*I - j*J - k*K,
+			r*I + R*i + j*K - k*J,
+			r*J + R*j + k*I - i*K,
+			r*K + R*k + i*J - j*I
+		);
+	}
+
+	function quaternionScale(s) {
+		var r = this.data[0], i = this.data[1], j = this.data[2], k = this.data[3];
+		return new Quaternion(s*r, s*i, s*j, s*k);
+	}
+
+	function quaternionNorm2() {
+		var r = this.data[0], i = this.data[1], j = this.data[2], k = this.data[3];
+		return r*r + i*i + j*j + k*k;
+	}
+
+	function quaternionNorm() {
+		return Math.sqrt(this.norm2());
+	}
+
+	function quaternionUnit(def) {
+		return this.scaleTo(1, def);
+	}
+
+	function quaternionScaleTo(length, def) {
+		var norm2 = this.norm2();
+		if (norm2 !== 0) {
+			return this.scale(length / Math.sqrt(norm2));
+		} else if (def instanceof Function) {
+			return def(this);
+		} else if (def) {
+			assertQuaternion(def);
+			return def;
+		} else {
+			return new Quaternion();
+		}
+	}
+
 	return Quaternion;
-}
 
-function Quaternion(axis, angle) {
-	var i, j, k, r;
-	if (arguments.length === 4) {
-		i = arguments[0];
-		j = arguments[1];
-		k = arguments[2];
-		r = arguments[3];
-	} else {
-		var c = Math.cos(angle / 2);
-		var s = Math.sin(angle / 2);
-		i = s * axis[0];
-		j = s * axis[1];
-		k = s * axis[2];
-		r = c;
-	}
-	this.i = i;
-	this.j = j;
-	this.k = k;
-	this.r = r;
-	this.mul = mul;
-	this.asMatrix = asMatrix;
-	return Object.freeze(this);
-
-	function mul(x) {
-		var i_ = j*x.k - k*x.j;
-		var j_ = k*x.i - i*x.k;
-		var k_ = i*x.j - j*x.i;
-		var r_ = -(i*x.i + j*x.j + k*x.k);
-		return new Quaternion(i_, j_, k_, r_);
-	}
-
-	function asMatrix(size) {
-		size = size || 3;
-		var m = new Mat(size, size, true);
-		m.set(0, 0, 1 - 2 * (j*j + k*k));
-		m.set(0, 1,     2 * (i*j + k*r));
-		m.set(0, 2,     2 * (i*k + j*r));
-		m.set(1, 0,     2 * (i*j + k*r));
-		m.set(1, 1, 1 - 2 * (i*i + k*k));
-		m.set(1, 2,     2 * (j*k - i*r));
-		m.set(2, 0,     2 * (i*k - j*r));
-		m.set(2, 1,     2 * (j*k + i*r));
-		m.set(2, 2, 1 - 2 * (i*i + j*j));
-		return m;
-	}
 }

@@ -15,7 +15,7 @@
   "dependencies": {
     "angular": "^1.4.5",
     "lodash": "^3.10.1",
-    "stream": "0.0.2",
-    "vektor": "^0.3.0"
+    "stl.js": "0.0.5",
+    "stream": "0.0.2"
   }
 }

@@ -1,14 +1,29 @@
 attribute vec3 position;
 attribute vec3 normal;
+uniform mat4 projection;
+uniform mat4 model;
+uniform vec4 material_color;
 uniform vec3 ambient_light_color;
-uniform vec3 diffuse_light_direction;
 uniform vec3 diffuse_light_color;
-uniform mat4 transform;
+uniform vec3 diffuse_light_direction;
+uniform vec3 specular_light_color;
+uniform vec3 specular_light_position;
+uniform float specular_exponent;
 varying vec4 color;
 
 void main() {
-	gl_Position = transform * vec4(position, 1.0);
-	float diffuse_dir = (1.0 + dot(diffuse_light_direction, normal)) / 2.0;
-	vec3 color_raw = ambient_light_color + diffuse_light_color * diffuse_dir;
-	color = vec4(clamp(color_raw, 0.0, 1.0), 1.0);
+	vec3 position_w = (model * vec4(position, 1.0)).xyz;
+	vec4 position_p = projection * vec4(position, 1.0);
+	vec3 normal_w = normalize(mat3(model) * normal);
+	/* Diffuse lighting */
+	vec3 diffuse_light = diffuse_light_color * (1.0 + dot(diffuse_light_direction, normal_w)) / 2.0;
+	/* Specular lighting */
+	vec3 specular_light_dir = specular_light_position - position_w;
+	vec3 specular_reflection_dir = reflect(specular_light_dir, normal_w);
+	float specular_cosine = (1.0 + dot(normalize(position_w), normalize(specular_reflection_dir))) / 2.0;
+	vec3 specular_light = specular_light_color * pow(specular_cosine, specular_exponent); // / dot(specular_light_dir, specular_light_dir);
+	/* Combine light colours */
+	vec3 light_color = clamp(ambient_light_color + diffuse_light + specular_light, 0.0, 1.0);
+	color = vec4(light_color, 1.0) * material_color;
+	gl_Position = position_p;
 }

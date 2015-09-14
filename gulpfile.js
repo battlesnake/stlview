@@ -8,7 +8,7 @@ var config = {
 	},
 	globs: {
 		js: ['./index.js'],
-		less: ['./index.less'],
+		less: ['./index.less', './vendor.less'],
 		jade: ['./index.jade'],
 		npmAssets: ['node_modules/**/*.@(png|jpg|jpeg|gif|svg|ttf|otf|woff|woff2|eot)', 'shader/**', 'stl/**']
 	},

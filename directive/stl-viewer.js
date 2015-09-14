@@ -1,45 +1,23 @@
-var vektor = require('vektor');
-
-var Vec = vektor.vector;
-var Mat = vektor.matrix;
-
 var WebGLDebugUtils = require('../webgl-debug.js');
 
 module.exports = stlViewer;
 
-function Translate(x, y, z) {
-	var m = new Mat(4, 4, true);
-	m.set(3, 0, x);
-	m.set(3, 1, y);
-	m.set(3, 2, z);
-	return m;
-}
-
-function Scale(s) {
-	var m = new Mat(4, 4, true);
-	m.set(0, 0, s);
-	m.set(1, 1, s);
-	m.set(2, 2, s);
-	return m;
-}
-
-function Ortho(w, h, d) {
-	var m = new Mat(4, 4, true);
-	m.set(0, 0, 2/w);
-	m.set(1, 1, 2/h);
-	m.set(2, 2, 2/d);
-	m.set(0, 3, -1);
-	m.set(1, 3, -1);
-	return m;
-}
-
-function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quaternion) {
+function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quaternion, Matrix, $timeout) {
 	return {
-		restrict: 'A',
+		restrict: 'E',
+		template: '<canvas style="width: {{width}}px; height: {{height}}px;"></canvas>',
 		scope: {
+			/* Array of { vertices: [v1, v2, v3], normal: n } */
 			data: '=',
+			/* 35mm focal length, mm */
 			zoom: '=',
-			orientation: '='
+			/* 'orthographic' or 'perspective' */
+			projection: '=',
+			/* Quaternion */
+			orientation: '=',
+			/* Pixels */
+			width: '=',
+			height: '='
 		},
 		link: link
 	};
@@ -50,38 +28,82 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 	}
 
 	function link(scope, element, attrs) {
-		var el = element[0];
-		var gl = el.getContext('webgl') || el.getContext('experimental-webgl');
+		var canvas = element.find('canvas')[0];
+		var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 		gl = WebGLDebugUtils.makeDebugContext(gl, throwOnError);
 		if (!gl) {
 			window.alert('Your browser does not support WebGL');
 			throw new Error('WebGL required');
 		}
 
-		var centre = new Vec(0, 0, 0);
-		var radius = 1;
+		var object = {
+			centre: new Matrix.vec3(0, 0, 0),
+			radius: 1
+		};
 		var vertexBuf = null;
 		var normalBuf = null;
 		var shaders = new ShaderRepository(gl);
 		var shader = null;
+		var aspect = 1;
 
-		var transform;
+		var transform = {
+			projection: null,
+			camera: null,
+			model: null
+		};
+
+		var viewInvalid = true;
+		var viewportInvalid = true;
+
+		var redrawPromise = null;
 
 		$q.all([
 				shaders.loadVertexShader('diffuse'),
 				shaders.loadFragmentShader('diffuse')
-			]).then(function (vs, fs) {
+			]).then(function (res) {
 				shader = shaders.build('diffuse', 'diffuse');
-				initView();
-				scope.watch('data', dataChanged);
-				scope.watch('zoom orientation', viewChanged);
+				initShaders();
+				scope.$watch('zoom', viewChanged);
+				scope.$watch('orientation', viewChanged);
+				scope.$watch('width', viewportChanged);
+				scope.$watch('height', viewportChanged);
+				scope.$watch('data', dataChanged);
+				scope.$watch('projection', viewChanged);
+				dataChanged();
 			});
 
-		var ambient_color = new Vec(0.2, 0.3, 0.6);
-		var diffuse_color = new Vec(0.8, 0.8, 0.8);
-		var diffuse_direction = new Vec(1, 1, 1);
+		var material_color = new Matrix.vec4(0.2, 0.3, 0.6, 1.0);
+		var ambient_color = new Matrix.vec3(0.6, 0.6, 0.3);
+		var diffuse_color = new Matrix.vec3(0.8, 0.8, 0.9);
+		var diffuse_direction = new Matrix.vec3(4, 2, 1).unit();
+		var specular_color = new Matrix.vec3(1, 1, 1);
+		var specular_position = new Matrix.vec3(5, 5, -2);
+		var specular_exponent = 2;
+
+		/* For perspective projection */
+		var camera_distance = 5;
 
 		return;
+
+		function deferRedraw() {
+			if (redrawPromise) {
+				return;
+			}
+			redrawPromise = $timeout(redraw, 0);
+			redrawPromise.finally(function () {
+					redrawPromise = null;
+				});
+		}
+
+		function viewChanged() {
+			viewInvalid = true;
+			deferRedraw();
+		}
+
+		function viewportChanged() {
+			viewportInvalid = true;
+			deferRedraw();
+		}
 
 		function dataChanged() {
 			var data = scope.data || [];
@@ -92,58 +114,92 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			var q_vb = makeVertexBuffer(data);
 			var q_nb = makeNormalBuffer(data);
 			return $q.all([q_centre, q_radius, q_vb, q_nb])
-				.then(function (c, r, vb, nb) {
-					centre = c;
-					radius = r;
-					vertexBuf = vb;
-					normalBuf = nb;
+				.then(function (res) {
+					object = Object.freeze({
+						centre: res[0],
+						radius: res[1]
+					});
+					vertexBuf = res[2];
+					normalBuf = res[3];
 				})
 				.then(function () {
 					viewChanged();
-					setInterval(viewChanged, 500);
+					deferRedraw();
 				});
 		}
 
-		function viewChanged() {
+		function initShaders() {
+			shader.use();
+			shader.enableAll();
+		}
+
+		function updateViewport() {
+			if (!scope.width || !scope.height) {
+				return;
+			}
+			gl.disable(gl.CULL_FACE);
+			gl.enable(gl.DEPTH_TEST);
+			gl.depthFunc(gl.LEQUAL);
+			canvas.width = scope.width;
+			canvas.height = scope.height;
+			gl.viewport(0, 0, scope.width, scope.height);
+			aspect = scope.width / scope.height;
+			viewportInvalid = false;
+		}
+
+		function updateView() {
 			if (!scope.zoom || !scope.orientation) {
 				return;
 			}
-			var matrices = [
-				new Ortho(1, 1, 2),
-				new Translate(0, 0, 1),
-				scope.orientation.asMatrix(),
-				new Scale(scope.zoom / radius),
-				new Translate(-centre[0], -centre[1], -centre[2])
-			];
-			transform = matrices.reduce(function (l, r) {
-					return l.dot(r);
-				}, new Mat(4, 4, true));
-			initView();
-			redraw();
-		}
-
-		function initView() {
-			gl.enable(gl.DEPTH_TEST);
-			gl.depthFunc(gl.LEQUAL);
-			gl.enable(gl.CULL_FACE);
-			gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-			shader.use();
-			shader.get('position').enable();
-			shader.get('normal').enable();
+			var proj;
+			if (scope.projection === 'ortho' || scope.projection === 'orthographic' || !scope.projection) {
+				proj = new Matrix.Orthographic(-1*aspect, 1*aspect, -1, 1, -1, 1)
+					.scale(scope.zoom / 50);
+			} else if (scope.projection === 'perspective') {
+				var fovy = 2 * Math.atan2(24, 2 * scope.zoom);
+				proj = new Matrix.Perspective(fovy, aspect, 0.01, 10)
+					.mul(new Matrix.Translation(0, 0, camera_distance));
+			} else {
+				throw new Error('Unknown projection: "' + scope.projection + '"');
+			}
+			transform.model = Matrix.Chain(
+				new Matrix.Rotation(scope.orientation),
+				new Matrix.Scale(1 / object.radius),
+				new Matrix.Translation(object.centre.neg())
+			);
+			transform.camera = Matrix.Chain(
+				proj
+			);
+			transform.projection = Matrix.Chain(
+				transform.camera,
+				transform.model
+			);
+			viewInvalid = false;
 		}
 
 		function redraw() {
-			gl.clearColor(0, 0, 0, 1);
+			if (viewInvalid) {
+				updateView();
+			}
+			if (viewportInvalid) {
+				updateViewport();
+			}
+			gl.clearColor(0, 0, 0.2, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-			if (!scope.data) {
+			if (!scope.data || !vertexBuf) {
 				return;
 			}
-			shader.get('position').bind(vertexBuf);
-			shader.get('normal').bind(normalBuf);
-			shader.get('transform').set(transform);
+			shader.get('projection').set(transform.projection);
+			shader.get('model').set(transform.model);
+			shader.get('material_color').set(material_color);
 			shader.get('ambient_light_color').set(ambient_color);
 			shader.get('diffuse_light_color').set(diffuse_color);
 			shader.get('diffuse_light_direction').set(diffuse_direction);
+			shader.get('specular_light_color').set(specular_color);
+			shader.get('specular_light_position').set(specular_position);
+			shader.get('specular_exponent').set(specular_exponent);
+			shader.get('position').bind(vertexBuf);
+			shader.get('normal').bind(normalBuf);
 			vertexBuf.draw();
 		}
 
@@ -151,10 +207,12 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			return slowReduce(triangles, function (state, t) {
 					var area = triangleArea(t);
 					var mid = triangleMid(t);
-					state.centre = state.centre.add(mid.scale(area));
-					state.weight += area;
+					if (isFinite(area)) {
+						state.accum = state.accum.add(mid.scale(area));
+						state.weight += area;
+					}
 					return state;
-				}, { accum: new Vec(0, 0, 0), weight: 0 })
+				}, { accum: new Matrix.vec3(), weight: 0 })
 				.then(function (state) {
 					return state.weight ? state.accum.scale(1 / state.weight) : state.accum;
 				});
@@ -163,9 +221,9 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 		function getRadius(centre, triangles) {
 			return slowReduce(triangles, function (state, t) {
 					var mid = triangleMid(t);
-					var r = mid.distanceFrom(centre);
+					var r = mid.sub(centre).norm();
 					return r > state ? r : state;
-				})
+				}, 0)
 				.then(function (state) {
 					return state > 0 ? state : 1;
 				});
@@ -183,6 +241,7 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 							state.coords[state.i++] = t.vertices[v][c];
 						}
 					}
+					return state;
 				}, state)
 				.then(function (state) {
 					return new VertexBuffer(gl, state.coords, 3, gl.TRIANGLES);
@@ -196,35 +255,41 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			};
 			state.coords.length = triangles.length * 9;
 			return slowReduce(triangles, function (state, t) {
-					for (var c = 0; c < 3; c++) {
-						var n = t.normal[c];
-						var len = n.length();
-						n = len ? n.scale(1 / n.length()) : triangleNormal(t);
-						for (var rep = 0; rep < 3; rep++) {
-							state.coords[state.i++] = n;
+					var calcNormal = function () { return triangleNormal(t); };
+					var n = makeVec3(t.normal).unit(calcNormal).data;
+					for (var rep = 0; rep < 3; rep++) {
+						for (var c = 0; c < 3; c++) {
+							state.coords[state.i++] = n[c];
 						}
 					}
+					return state;
 				}, state)
 				.then(function (state) {
 					return new VertexBuffer(gl, state.coords, 3);
 				});
 		}
 
+		function makeVec3(v) {
+			if (v.length !== 3) {
+				console.info(v);
+				throw new Error('Vector size mismatch');
+			}
+			return new Matrix.vec3(v);
+		}
+
 		function triangleMid(t) {
-			var v = t.vertices.map(Vec);
+			var v = t.vertices.map(makeVec3);
 			return v[0].add(v[1]).add(v[2]).scale(1/3);
 		}
 
 		function triangleNormal(t) {
-			var v = t.vertices.map(Vec);
-			var n = v[1].sub(v[0]).cross(v[2].sub(v[0]));
-			var l = n.length();
-			return l ? n.scale(1 / l) : n;
+			var v = t.vertices.map(makeVec3);
+			return v[1].sub(v[0]).cross(v[2].sub(v[0])).unit();
 		}
 
 		function triangleArea(t) {
-			var v = t.vertices.map(Vec);
-			return v[1].sub(v[0]).cross(v[2].sub(v[0])).length() / 2;
+			var v = t.vertices.map(makeVec3);
+			return v[1].sub(v[0]).cross(v[2].sub(v[0])).norm() / 2;
 		}
 
 	}
