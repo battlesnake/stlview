@@ -1,5 +1,6 @@
 module.exports = quaternion;
 
+/*@ngInject*/
 function quaternion() {
 
 	function Quaternion(axis, angle) {

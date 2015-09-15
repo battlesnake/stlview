@@ -1,5 +1,6 @@
 module.exports = slowMap;
 
+/*@ngInject*/
 function slowMap($q, $rootScope) {
 	return function (arr, mapper, quanta) {
 		var len = arr.length;

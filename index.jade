@@ -4,7 +4,6 @@ html
 	head
 		meta(charset='utf8')
 		title STL viewer
-		link(rel='stylesheet', href='style.css')
 		meta(name="viewport", content="width=device-width, minimum-scale=1.0")
 		meta(name="generator", content="Vim")
 		link(rel="author", href="https://plus.google.com/102308390225359962273")
@@ -35,56 +34,58 @@ html
 			ga('create', 'UA-41777558-1', 'hackology.co.uk');
 			ga('send', 'pageview');
 
-	body(ng-app='stlviewer')
-		div(ng-controller='viewer')
-			stl-viewer(data='stl.triangles', orientation='view.orientation', zoom='view.zoom', width='view.size', height='view.size', projection='view.projection', bad-wireframe='view.wireframe')
-			div.controls
-
-				label
-					span.section Model
-					select(ng-options='value as value for (key, value) in models', ng-change='methods.loadModel()', ng-model='model.name')
-
-				label(style='display: none')
-					span.section Render options:
-					span
-						input(type='checkbox', ng-model='view.wireframe')
-						| Bad wireframe:
-
-				label
-					span.section Projection:
-					form
-						span(ng-repeat='(key, value) in projections')
-							label
-								input(type='radio', ng-model='view.projection', ng-value='key', name='projection')
-								| {{ value }}
-
-				.rotation
-					label
-						span.section Orientation:
-					.buttons
-						span
-							button(ng-mousedown='methods.setRotation(-1, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◤
-							button(ng-mousedown='methods.setRotation( 0, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▲
-							button(ng-mousedown='methods.setRotation(+1, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◥
-						span
-							button(ng-mousedown='methods.setRotation(-1,  0, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◀
-							button(ng-mousedown='methods.reset();') ×
-							button(ng-mousedown='methods.setRotation(+1,  0, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▶
-						span
-							button(ng-mousedown='methods.setRotation(-1, +1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◣
-							button(ng-mousedown='methods.setRotation( 0, +1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▼
-							button(ng-mousedown='methods.setRotation(+1, +1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◢
-						span
-							button(ng-mousedown='methods.setRotation( 0, 0, -1);', ng-mouseup='methods.setRotation(0, 0, 0);') ↻
-							button(ng-mousedown='methods.setRotation( 0, 0, +1);', ng-mouseup='methods.setRotation(0, 0, 0);') ↺
-
-				.zoom(ng-if='view.projection==="perspective"')
-					label
-						span.section Zoom:
-					button(ng-mousedown='methods.setZooming(-1);', ng-mouseup='methods.setZooming(0, 0);') -
-					input(disabled, type='text', value='{{methods.strZoom()}}')
-					button(ng-mousedown='methods.setZooming(+1);', ng-mouseup='methods.setZooming(0, 0);') +
-
-		link(rel='stylesheet', href='vendor.css')
+		link(rel='stylesheet', href='fonts.css')
+		link(rel='stylesheet', href='style.css')
 		script(src='vendor.js')
 		script(src='client.js')
+
+	body(ng-app='stlviewer', ng-controller='viewer')
+
+		stl-viewer(data='stl.triangles', orientation='view.orientation', zoom='view.zoom', width='view.size', height='view.size', projection='view.projection', bad-wireframe='view.wireframe').stl-viewer
+
+		div.controls
+
+			label
+				span.section Model
+				select(ng-options='value as value for (key, value) in models', ng-change='methods.loadModel()', ng-model='model.name')
+
+			label(style='display: none')
+				span.section Render options:
+				span
+					input(type='checkbox', ng-model='view.wireframe')
+					| Bad wireframe:
+
+			label
+				span.section Projection:
+				form
+					span(ng-repeat='(key, value) in projections')
+						label
+							input(type='radio', ng-model='view.projection', ng-value='key', name='projection')
+							| {{ value }}
+
+			.rotation
+				label
+					span.section Orientation:
+				.buttons
+					span
+						button(ng-mousedown='methods.setRotation(-1, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◤
+						button(ng-mousedown='methods.setRotation( 0, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▲
+						button(ng-mousedown='methods.setRotation(+1, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◥
+					span
+						button(ng-mousedown='methods.setRotation(-1,  0, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◀
+						button(ng-mousedown='methods.reset();') ×
+						button(ng-mousedown='methods.setRotation(+1,  0, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▶
+					span
+						button(ng-mousedown='methods.setRotation(-1, +1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◣
+						button(ng-mousedown='methods.setRotation( 0, +1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▼
+						button(ng-mousedown='methods.setRotation(+1, +1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◢
+					span
+						button(ng-mousedown='methods.setRotation( 0, 0, -1);', ng-mouseup='methods.setRotation(0, 0, 0);') ↻
+						button(ng-mousedown='methods.setRotation( 0, 0, +1);', ng-mouseup='methods.setRotation(0, 0, 0);') ↺
+
+			.zoom(ng-if='view.projection==="perspective"')
+				label
+					span.section Zoom:
+				button(ng-mousedown='methods.setZooming(-1);', ng-mouseup='methods.setZooming(0, 0);') -
+				input(disabled, type='text', value='{{methods.strZoom()}}' style='width: 48px;')
+				button(ng-mousedown='methods.setZooming(+1);', ng-mouseup='methods.setZooming(0, 0);') +

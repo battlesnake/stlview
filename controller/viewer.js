@@ -2,6 +2,7 @@ var stl = require('stl.js');
 
 module.exports = viewer;
 
+/*@ngInject*/
 function viewer($scope, $http, Quaternion, $interval, $timeout) {
 	$scope.stl = {
 		triangles: []
@@ -38,6 +39,12 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 
 	var ival = null;
 	var zt = new Date().getTime();
+
+	$interval(function () {
+		var min = Math.min(window.innerWidth, window.innerHeight);
+		var max = Math.max(window.innerWidth, window.innerHeight) - 160;
+		$scope.view.size = Math.min(min, max);
+	}, 100);
 
 	loadModel();
 

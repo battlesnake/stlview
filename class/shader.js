@@ -1,5 +1,6 @@
 module.exports = shader;
 
+/*@ngInject*/
 function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 	var idx = 0;
 

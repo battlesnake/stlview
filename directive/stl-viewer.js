@@ -2,6 +2,7 @@ var WebGLDebugUtils = require('../webgl-debug.js');
 
 module.exports = stlViewer;
 
+/*@ngInject*/
 function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quaternion, Matrix, $timeout) {
 	return {
 		restrict: 'E',

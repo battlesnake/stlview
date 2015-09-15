@@ -1,5 +1,6 @@
 module.exports = slowReduce;
 
+/*@ngInject*/
 function slowReduce($q, $rootScope) {
 	return function (arr, reductor, state, quanta) {
 		var len = arr.length;

@@ -1,5 +1,6 @@
 module.exports = vertexBuffer;
 
+/*@ngInject*/
 function vertexBuffer() {
 
 	return VertexBuffer;

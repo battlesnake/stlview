@@ -1,15 +1,58 @@
+html {
+	margin: 0;
+	padding: 0;
+}
+
 body {
-	font-family: 'Open Sans', 'Roboto', sans-serif;
+	font-family: 'Roboto', 'Open Sans', 'DejaVu Sans', sans-serif;
+	margin: 0;
+	padding: 0;
+	font-size: 12px;
+	display: flex;
+	flex-flow: row nowrap;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+@media (max-device-width: 800px), (max-device-height: 800px) {
+
+	body {
+		font-size: 9px;
+	}
+
+	button {
+		margin: 2px;
+		width: 24px;
+		height: 24px;
+		font-size: 16px;
+		line-height: 16px;
+	}
+
+}
+
+@media (orientation: portrait) {
+	
+	body {
+		flex-flow: column nowrap;
+	}
+
+	.controls {
+		flex-flow: row nowrap;
+	}
+
 }
 
 .controls {
-	border: 1px solid black;
-
 	display: flex;
+	flex-flow: row wrap;
+	justify-content: flex-start;
+	align-items: flex-start;
+	align-content: flex-start;
+	flex: 0 0 160px;
 
-	&>* { margin: 10px; padding: 10px; }
-
-	&>*+* { border-left: 1px solid black; }
+	&>* { margin: 4px; padding: 4px; border: 1px solid black; }
 
 	span {
 		display: block;
@@ -31,13 +74,15 @@ body {
 	}
 
 	.section {
-		font-size: 120%;
+		font-weight: bold;
 		text-decoration: underline;
-		margin-bottom: 5px;
+		margin-bottom: 4px;
 	}
 
 	button {
-		width: 24px;
-		height: 24px;
+		width: 20px;
+		height: 20px;
+		font-size: 12px;
+		line-height: 12px;
 	}
 }

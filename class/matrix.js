@@ -1,5 +1,6 @@
 module.exports = matrix;
 
+/*@ngInject*/
 function matrix(Quaternion) {
 
 	/* Not intended to be fast or efficient */
