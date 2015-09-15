@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "angular": "^1.4.5",
-    "lodash": "^3.10.1",
     "stl.js": "0.0.5",
     "stream": "0.0.2"
   }

@@ -10,7 +10,8 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 		orientation: new Quaternion(),
 		zoom: 50,
 		size: 540,
-		projection: 'orthographic'
+		projection: 'orthographic',
+		wireframe: false
 	};
 	$scope.projections = {
 		perspective: 'Perspective',
@@ -20,7 +21,12 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 		setRotation: setRotation,
 		setZooming: setZooming,
 		reset: reset,
-		strZoom: strZoom
+		strZoom: strZoom,
+		loadModel: loadModel
+	};
+	$scope.models = ['gear', 'ship'];
+	$scope.model = {
+		name: $scope.models[0]
 	};
 
 	var anim = {
@@ -30,19 +36,25 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 		z: 0
 	};
 
-	$http.get('/stl/gear.stl')
-		.then(function (res) {
-			var data = res.data;
-			var parsed = stl.parse(data, { lax: true });
-			$scope.stl.triangles = parsed.triangles;
-		});
-
 	var ival = null;
 	var zt = new Date().getTime();
+
+	loadModel();
 
 	reset();
 
 	return;
+
+	function loadModel() {
+		var name = $scope.model.name;
+		$scope.stl.triangles = [];
+		$http.get('/stl/' + name + '.stl')
+			.then(function (res) {
+				var data = res.data;
+				var parsed = stl.parse(data, { lax: true });
+				$scope.stl.triangles = parsed.triangles;
+			});
+	}
 
 	function setRotation(rx, ry, rz) {
 		anim.rx = rx;
@@ -67,7 +79,7 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 		var dt = (new Date().getTime() - zt) / 1000;
 		dt = dt > 0.1 ? 0.1 : dt;
 		zt = new Date().getTime();
-		var rot = new Quaternion([anim.ry, anim.rx, anim.rz], 90 * Math.PI/180 * dt);
+		var rot = new Quaternion([-anim.ry, -anim.rx, anim.rz], 90 * Math.PI/180 * dt);
 		var z = anim.z * 20 * dt;
 		rot = rot.mul($scope.view.orientation);
 		z = $scope.view.zoom + z;
@@ -84,7 +96,6 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 		setZooming(0);
 		$scope.view.orientation = new Quaternion();
 		$scope.view.zoom = 50;
-		$scope.view.projection = 'orthographic';
 	}
 
 	function strZoom() {

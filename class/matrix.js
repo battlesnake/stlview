@@ -126,25 +126,36 @@ function matrix(Quaternion) {
 			[
 				2/dx, 0, 0, -cx/dx,
 				0, 2/dy, 0, -cy/dy,
-				0, 0, -2/dz, cz/dz,
+				0, 0, 2/dz, -cz/dz,
 				0, 0, 0, 1
 			]);
 	};
 
 	Matrix.Perspective = function (fovy, aspect, z0, z1) {
-		var f = 1 / Math.tan(fovy / 2);
+		var h = 2 * Math.tan(fovy / 2);
+		var w = aspect * h;
 		var dz = z1 - z0;
-		var cz = z1 + z0;
-		return new Matrix(4, 4,
-			[
-				f/aspect, 0, 0, 0,
-				0, f, 0, 0,
-				0, 0, -cz/dz, 2*z0*z1/dz,
-				0, 0, 1, 0
-			]);
+		/* Orthographic projection, then divide by z-value */
+		var m = [].slice.apply(new Matrix.Orthographic(-w/2, +w/2, -h/2, +h/2, 0, 1).data);
+		m[10] = (z0 + z1) / dz;
+		m[11] = -2 * z0 * z1 / dz;
+		m[14] = 1;
+		m[15] = 0;
+		return new Matrix(4, 4, m);
+	};
+
+	Matrix.Camera35mm = function (aspect, focal_length, z0, z1) {
+		var fovy = 2 * Math.atan2(24, 2 * focal_length);
+		return new Matrix.Perspective(fovy, aspect, z0, z1);
+	};
+
+	Matrix.Identity = function (w) {
+		return new Matrix(w, w, true);
 	};
 
 	Matrix.prototype = {
+		toString: matrixToString,
+		valueOf: matrixToString,
 		add: matrixAdd,
 		sub: matrixSub,
 		scale: matrixScale,
@@ -173,16 +184,12 @@ function matrix(Quaternion) {
 		this.width = w;
 		this.height = h;
 		this.isSquare = w === h;
-		/* TODO: If values are given, verify isZero/isIdentity/isDiagonal */
-		this.isZero = false;
-		this.isIdentity = false;
-		this.isDiagonal = false;
 		this.isVector = w === 1;
 		var data = zeros(wh);
-		if (this.isIdentity) {
-			setIdentity.call(this);
-		} else if (this.isZero) {
+		if (arguments.length === 2 || value === false || value === null) {
 			setZero.call(this);
+		} else if (value === true) {
+			setIdentity.call(this);
 		} else if (value instanceof Array) {
 			value = [].concat.apply([], value);
 			if (w === h && value.length === w) {
@@ -194,6 +201,9 @@ function matrix(Quaternion) {
 				console.info('matrix size:', w + 'x' + h);
 				throw new Error('Invalid value (size mismatch?)');
 			}
+		} else {
+			console.log(value);
+			throw new Error('Invalid matrix initializer');
 		}
 		if (!(this instanceof Matrix)) {
 			return new Matrix(w, h, data);
@@ -206,18 +216,15 @@ function matrix(Quaternion) {
 			for (var i = 0; i < w; i++) {
 				data[i * (w + 1)] = t[i];
 			}
-			this.isDiagonal = true;
 		}
 
 		function setIdentity() {
 			for (var i = 0; i < w; i++) {
 				data[i * (w + 1)] = 1;
 			}
-			this.isIdentity = true;
 		}
 
 		function setZero() {
-			this.isZero = true;
 		}
 
 		function pushArray(arr) {
@@ -260,6 +267,19 @@ function matrix(Quaternion) {
 			console.info(a.width, a.height);
 			throw new Error('Vector required');
 		}
+	}
+
+	function matrixToString() {
+		var m = [];
+		var i = 0;
+		for (var h = 0; h < this.height; h++) {
+			var r = [];
+			m.push(r);
+			for (var w = 0; w < this.width; w++) {
+				r.push(this.data[i++]);
+			}
+		}
+		return m.map(function (r) { return r.join(', '); }).join('; ');
 	}
 
 	function matrixAdd(rhs) {

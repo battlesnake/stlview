@@ -41,6 +41,8 @@ function quaternion() {
 	}
 
 	Quaternion.prototype = {
+		toString: quaternionToString,
+		valueOf: quaternionToString,
 		mul: quaternionMul,
 		scale: quaternionScale,
 		norm2: quaternionNorm2,
@@ -53,6 +55,10 @@ function quaternion() {
 		if (!(x instanceof Quaternion)) {
 			throw new Error('Quaternion expected');
 		}
+	}
+
+	function quaternionToString() {
+		return '((' + [this.i, this.j, this.k].join(', ') + '), ' + this.r + ')';
 	}
 
 	function quaternionMul(x) {

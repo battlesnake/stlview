@@ -17,7 +17,9 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			orientation: '=',
 			/* Pixels */
 			width: '=',
-			height: '='
+			height: '=',
+			/* Bad wireframe */
+			badWireframe: '='
 		},
 		link: link
 	};
@@ -48,7 +50,6 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 
 		var transform = {
 			projection: null,
-			camera: null,
 			model: null
 		};
 
@@ -69,19 +70,19 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 				scope.$watch('height', viewportChanged);
 				scope.$watch('data', dataChanged);
 				scope.$watch('projection', viewChanged);
+				scope.$watch('badWireframe', viewChanged);
 				dataChanged();
 			});
 
-		var material_color = new Matrix.vec4(0.2, 0.3, 0.6, 1.0);
-		var ambient_color = new Matrix.vec3(0.6, 0.6, 0.3);
-		var diffuse_color = new Matrix.vec3(0.8, 0.8, 0.9);
-		var diffuse_direction = new Matrix.vec3(4, 2, 1).unit();
-		var specular_color = new Matrix.vec3(1, 1, 1);
-		var specular_position = new Matrix.vec3(5, 5, -2);
-		var specular_exponent = 2;
+		var light_position = new Matrix.vec3(0.6, 0.35, -1);
 
-		/* For perspective projection */
-		var camera_distance = 5;
+		var material_color = new Matrix.vec4(0.2, 0.3, 0.6, 1.0);
+		var ambient_color = new Matrix.vec3(1, 1, 1).scale(0.1);
+		var diffuse_color = new Matrix.vec3(1, 1, 1).scale(0.3);
+		var specular_color = new Matrix.vec3(1, 1, 1).scale(10);
+		var specular_exponent = 10;
+
+		var camera_position = new Matrix.vec3(0, 0, -5);
 
 		return;
 
@@ -151,14 +152,12 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			if (!scope.zoom || !scope.orientation) {
 				return;
 			}
-			var proj;
+			var projection;
 			if (scope.projection === 'ortho' || scope.projection === 'orthographic' || !scope.projection) {
-				proj = new Matrix.Orthographic(-1*aspect, 1*aspect, -1, 1, -1, 1)
+				projection = new Matrix.Orthographic(-1*aspect, 1*aspect, -1, 1, 0, 10)
 					.scale(scope.zoom / 50);
 			} else if (scope.projection === 'perspective') {
-				var fovy = 2 * Math.atan2(24, 2 * scope.zoom);
-				proj = new Matrix.Perspective(fovy, aspect, 0.01, 10)
-					.mul(new Matrix.Translation(0, 0, camera_distance));
+				projection = new Matrix.Camera35mm(aspect, scope.zoom, 0.1, 10);
 			} else {
 				throw new Error('Unknown projection: "' + scope.projection + '"');
 			}
@@ -167,13 +166,7 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 				new Matrix.Scale(1 / object.radius),
 				new Matrix.Translation(object.centre.neg())
 			);
-			transform.camera = Matrix.Chain(
-				proj
-			);
-			transform.projection = Matrix.Chain(
-				transform.camera,
-				transform.model
-			);
+			transform.projection = projection;
 			viewInvalid = false;
 		}
 
@@ -184,25 +177,30 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			if (viewportInvalid) {
 				updateViewport();
 			}
-			gl.clearColor(0, 0, 0.2, 1);
+			gl.clearColor(0, 0, 0.1, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			if (!scope.data || !vertexBuf) {
 				return;
 			}
 			shader.get('projection').set(transform.projection);
 			shader.get('model').set(transform.model);
+			shader.get('camera_position').set(camera_position);
 			shader.get('material_color').set(material_color);
+			shader.get('light_position').set(light_position);
 			shader.get('ambient_light_color').set(ambient_color);
 			shader.get('diffuse_light_color').set(diffuse_color);
-			shader.get('diffuse_light_direction').set(diffuse_direction);
 			shader.get('specular_light_color').set(specular_color);
-			shader.get('specular_light_position').set(specular_position);
 			shader.get('specular_exponent').set(specular_exponent);
 			shader.get('position').bind(vertexBuf);
 			shader.get('normal').bind(normalBuf);
-			vertexBuf.draw();
+			if (scope.badWireframe) {
+				vertexBuf.draw(gl.LINE_STRIP);
+			} else {
+				vertexBuf.draw();
+			}
 		}
 
+		/* Centroid of model surface */
 		function getCentroid(triangles) {
 			return slowReduce(triangles, function (state, t) {
 					var area = triangleArea(t);
@@ -214,15 +212,21 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 					return state;
 				}, { accum: new Matrix.vec3(), weight: 0 })
 				.then(function (state) {
-					return state.weight ? state.accum.scale(1 / state.weight) : state.accum;
+					return state.weight > 0 ? state.accum.scale(1 / state.weight) : state.accum;
 				});
 		}
 
+		/* Maximum distance of vertex from centroid */
 		function getRadius(centre, triangles) {
 			return slowReduce(triangles, function (state, t) {
-					var mid = triangleMid(t);
-					var r = mid.sub(centre).norm();
-					return r > state ? r : state;
+					var v = t.vertices.map(makeVec3);
+					for (var i = 0; i < 3; i++) {
+						var r = v[i].sub(centre).norm();
+						if (r > state) {
+							state = r;
+						}
+					}
+					return state;
 				}, 0)
 				.then(function (state) {
 					return state > 0 ? state : 1;
@@ -284,7 +288,7 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 
 		function triangleNormal(t) {
 			var v = t.vertices.map(makeVec3);
-			return v[1].sub(v[0]).cross(v[2].sub(v[0])).unit();
+			return v[1].sub(v[0]).cross(v[2].sub(v[1])).unit();
 		}
 
 		function triangleArea(t) {

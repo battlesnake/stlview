@@ -1,3 +1,7 @@
+body {
+	font-family: 'Open Sans', 'Roboto', sans-serif;
+}
+
 .controls {
 	border: 1px solid black;
 
@@ -6,6 +10,31 @@
 	&>* { margin: 10px; padding: 10px; }
 
 	&>*+* { border-left: 1px solid black; }
+
+	span {
+		display: block;
+		white-space: nowrap;
+	}
+
+	.buttons {
+		display: inline-block;
+	}
+
+	.buttons>* {
+		display: flex;
+		flex-flow: row nowrap;
+		justify-content: flex-start;
+	}
+
+	.buttons>*:last-child {
+		justify-content: center;
+	}
+
+	.section {
+		font-size: 120%;
+		text-decoration: underline;
+		margin-bottom: 5px;
+	}
 
 	button {
 		width: 24px;

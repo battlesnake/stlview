@@ -25,8 +25,11 @@ function vertexBuffer() {
 			gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
 		}
 
-		function draw() {
-			gl.drawArrays(type, 0, count);
+		function draw(asType) {
+			if (arguments.length === 0) {
+				asType = type;
+			}
+			gl.drawArrays(asType, 0, count);
 		}
 	}
 }
