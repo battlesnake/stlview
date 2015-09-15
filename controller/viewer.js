@@ -48,7 +48,7 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 	function loadModel() {
 		var name = $scope.model.name;
 		$scope.stl.triangles = [];
-		$http.get('/stl/' + name + '.stl')
+		$http.get('stl/' + name + '.stl')
 			.then(function (res) {
 				var data = res.data;
 				var parsed = stl.parse(data, { lax: true });

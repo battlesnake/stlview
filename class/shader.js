@@ -19,7 +19,7 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 				if (test) {
 					return $q.resolve(test);
 				}
-				var path = '/shader/' + name;
+				var path = 'shader/' + name;
 				return $http.get(path)
 					.then(function (res) {
 						var glsl = res.data;
