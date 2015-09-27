@@ -1,3 +1,7 @@
+* {
+	box-sizing: border-box;
+}
+
 html {
 	margin: 0;
 	padding: 0;
@@ -9,11 +13,11 @@ body {
 	padding: 0;
 	font-size: 12px;
 	display: flex;
+	overflow: hidden;
 	flex-flow: row nowrap;
-}
-
-* {
-	box-sizing: border-box;
+	&>* {
+		display: inline-block;
+	}
 }
 
 @media (max-device-width: 800px), (max-device-height: 800px) {
@@ -22,20 +26,21 @@ body {
 		font-size: 9px;
 	}
 
-	button {
-		margin: 2px;
-		width: 24px;
-		height: 24px;
-		font-size: 16px;
-		line-height: 16px;
+	.square.buttons {
+		button {
+			margin: 2px;
+			width: 24px;
+			height: 24px;
+			font-size: 16px;
+			line-height: 16px;
+		}
 	}
-
 }
 
 @media (orientation: portrait) {
-	
+
 	body {
-		flex-flow: column nowrap;
+		flex-direction: column;
 	}
 
 	.controls {
@@ -52,7 +57,11 @@ body {
 	align-content: flex-start;
 	flex: 0 0 160px;
 
-	&>* { margin: 4px; padding: 4px; border: 1px solid black; }
+	&>* {
+		margin: 4px;
+		padding: 4px;
+		border: 1px solid black;
+	}
 
 	span {
 		display: block;
@@ -79,10 +88,126 @@ body {
 		margin-bottom: 4px;
 	}
 
-	button {
-		width: 20px;
-		height: 20px;
-		font-size: 12px;
-		line-height: 12px;
+	.square.buttons {
+		button {
+			width: 20px;
+			height: 20px;
+			font-size: 12px;
+			line-height: 12px;
+		}
+	}
+}
+
+.modal-container {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	display: table;
+	text-align: center;
+	margin: 0;
+	background: rgba(70, 70, 70, 0.4);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 400ms linear;
+	z-index: 1000;
+
+	&:target {
+		opacity: 1;
+		pointer-events: all;
+	}
+}
+
+.modal-center {
+	display: table-cell;
+	text-align: center;
+	vertical-align: middle;
+	margin: 0;
+}
+
+.modal {
+	display: inline-block;
+	text-align: left;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	transform: rotate(270deg) scale(0);
+	transform-origin: center center;
+	transition: transform 400ms ease-in;
+	margin: 0;
+	padding: 10px;
+	background: #ffe;
+	box-shadow: 5px 5px 10px 5px rgba(0, 0, 0, 0.6);
+
+	.modal-container:target & {
+		transform: rotate(0) scale(1);
+	}
+
+	h1 {
+		font-size: 24px;
+		font-weight: 600;
+		display: block;
+		border-bottom: 1px solid #ccc;
+		margin-top: 0;
+	}
+
+	p {
+		font-size: 16px;
+		font-weight: 500;
+	}
+
+	.close-button {
+		position: absolute;
+		display: block;
+		right: -8px;
+		top: -8px;
+		width: 16px;
+		height: 16px;
+		padding: 8px;
+		border: 1px solid rgba(160, 160, 160, 0.4);
+		background: #ccb;
+		transition: all 100ms linear;
+		box-shadow: 5px -5px 5px 0px rgba(0, 0, 0, 0.4);
+		&:before {
+			position: absolute;
+			overflow: visible;
+			transform: translate(-50%, -50%);
+			font-size: 10px;
+			font-weight: 600;
+			color: rgba(0, 0, 0, 0.4);
+			content: '×';
+		}
+		&:hover {
+			background: #ddc;
+			right: -10px;
+			top: -10px;
+			width: 20px;
+			height: 20px;
+			padding: 10px;
+			&:before {
+				font-size: 12px;
+				color: rgba(0, 0, 0, 0.8);
+			}
+		}
+	}
+}
+
+.progress-widget {
+	display: block;
+	margin: 5px;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	position: relative;
+	height: 19px;
+	white-space: nowrap;
+	overflow: hidden;
+
+	.progress-bar {
+		border: 1px solid transparent;
+		background: #008;
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 0%;
+		transition: width 100ms ease-in;
 	}
 }

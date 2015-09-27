@@ -5,7 +5,7 @@ module.exports = stlViewer;
 /*@ngInject*/
 function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quaternion, Matrix, $timeout) {
 	return {
-		restrict: 'E',
+		restrict: 'EA',
 		template: '<canvas style="width: {{width}}px; height: {{height}}px;"></canvas>',
 		scope: {
 			/* Array of { vertices: [v1, v2, v3], normal: n } */

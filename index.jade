@@ -1,53 +1,24 @@
 doctype html
 
 html
+
 	head
 		meta(charset='utf8')
 		title STL viewer
-		meta(name="viewport", content="width=device-width, minimum-scale=1.0")
-		meta(name="generator", content="Vim")
-		link(rel="author", href="https://plus.google.com/102308390225359962273")
-		link(rel="publisher", href="https://plus.google.com/116917388031849363184")
-		link(rel="author", type="image/jpg", href="http://hackology.co.uk/icons/me.jpg", )
-		link(rel="me", type="image/jpg", href="http://hackology.co.uk/icons/me.jpg", )
-		link(rel="shortcut(icon", type="image/png", href="http://hackology.co.uk/icons/psygen.png")
-		link(rel="shortcut(icon", type="image/x-icon", href="http://hackology.co.uk/favicon.ico")
-		link(rel="icon", type="image/png", href="http://hackology.co.uk/icons/psygen.png")
-		link(rel="apple-touch-icon", type="image/png", href="http://hackology.co.uk/icons/redicon.png")
-		meta(name="description", content="STL viewer demo using WebGL")
-		link(rel="canonical", href="http://hackology.co.uk/stlview/out")
-		meta(property="og:locale", content="en_GB")
-		meta(property="og:type", content="website")
-		meta(property="og:title", content="STLViewer demo using WebGL")
-		meta(property="og:description", content="STL Viewer demo using WebGL")
-		meta(property="og:url", content="http://hackology.co.uk/stlview/out")
-		meta(property="og:site_name", content="Hackology")
-		meta(property="fb:admins", content="513889862")
-		meta(property="og:image", content="http://hackology.co.uk/wp-content/themes/hacktheme/images/home.jpg")
-
-		script.
-			(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-			(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-			m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-			})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-			ga('create', 'UA-41777558-1', 'hackology.co.uk');
-			ga('send', 'pageview');
-
-		link(rel='stylesheet', href='fonts.css')
 		link(rel='stylesheet', href='style.css')
-		script(src='vendor.js')
-		script(src='client.js')
 
 	body(ng-app='stlviewer', ng-controller='viewer')
 
-		stl-viewer(data='stl.triangles', orientation='view.orientation', zoom='view.zoom', width='view.size', height='view.size', projection='view.projection', bad-wireframe='view.wireframe').stl-viewer
+		div(stl-viewer, data='stl.triangles', orientation='view.orientation', zoom='view.zoom', width='view.size', height='view.size', projection='view.projection', bad-wireframe='view.wireframe')
 
-		div.controls
+		.controls
 
-			label
-				span.section Model
-				select(ng-options='value as value for (key, value) in models', ng-change='methods.loadModel()', ng-model='model.name')
+			.model-selection
+				label
+					span.section Model
+					select(ng-options='mod as mod.name for mod in repository.list', ng-change='methods.loadModel()', ng-model='repository.active')
+				button(onclick='window.location.hash="uploader";')
+					| Open...
 
 			label(style='display: none')
 				span.section Render options:
@@ -66,7 +37,7 @@ html
 			.rotation
 				label
 					span.section Orientation:
-				.buttons
+				.square.buttons
 					span
 						button(ng-mousedown='methods.setRotation(-1, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ◤
 						button(ng-mousedown='methods.setRotation( 0, -1, 0);', ng-mouseup='methods.setRotation(0, 0, 0);') ▲
@@ -87,5 +58,20 @@ html
 				label
 					span.section Zoom:
 				button(ng-mousedown='methods.setZooming(-1);', ng-mouseup='methods.setZooming(0, 0);') -
-				input(disabled, type='text', value='{{methods.strZoom()}}' style='width: 48px;')
+				input(disabled, type='text', value='{{methods.strZoom()}}')
 				button(ng-mousedown='methods.setZooming(+1);', ng-mouseup='methods.setZooming(0, 0);') +
+
+		form#uploader.modal-container(ng-controller='uploader')
+			.modal-center
+				.modal
+					a.close-button(href='#')
+					h1 Open file
+					input(file-select, type='file', accept='.stl',
+					on-loaded='uploader.loadFile(name, content)',
+					on-progress='uploader.percent = percent')
+
+					.progress-widget(ng-hide='uploader.percent === 0')
+						.progress-bar(ng-style='{ width: (uploader.percent + "%") }')
+
+		script(src='vendor.js')
+		script(src='client.js')

@@ -1,9 +1,7 @@
-var stl = require('stl.js');
-
 module.exports = viewer;
 
 /*@ngInject*/
-function viewer($scope, $http, Quaternion, $interval, $timeout) {
+function viewer($scope, Quaternion, $interval, $timeout, modelRepository) {
 	$scope.stl = {
 		triangles: []
 	};
@@ -25,10 +23,7 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 		strZoom: strZoom,
 		loadModel: loadModel
 	};
-	$scope.models = ['gear', 'ship'];
-	$scope.model = {
-		name: $scope.models[0]
-	};
+	var repository = $scope.repository = modelRepository;
 
 	var anim = {
 		rx: 0,
@@ -41,11 +36,16 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 	var zt = new Date().getTime();
 
 	$interval(function () {
-		var min = Math.min(window.innerWidth, window.innerHeight);
-		var max = Math.max(window.innerWidth, window.innerHeight) - 160;
+		var w = window.innerWidth;
+		var h = window.innerHeight;
+		var min = Math.min(w, h);
+		var max = Math.max(w, h) - 160;
 		$scope.view.size = Math.min(min, max);
 	}, 100);
 
+	$scope.$watch('repository.active', function () {
+		loadModel($scope.repository.active);
+	});
 	loadModel();
 
 	reset();
@@ -53,13 +53,14 @@ function viewer($scope, $http, Quaternion, $interval, $timeout) {
 	return;
 
 	function loadModel() {
-		var name = $scope.model.name;
 		$scope.stl.triangles = [];
-		$http.get('stl/' + name + '.stl')
-			.then(function (res) {
-				var data = res.data;
-				var parsed = stl.parse(data, { lax: true });
-				$scope.stl.triangles = parsed.triangles;
+		var model = repository.active;
+		if (!model) {
+			return;
+		}
+		model.getTriangles()
+			.then(function (triangles) {
+				$scope.stl.triangles = triangles;
 			});
 	}
 
