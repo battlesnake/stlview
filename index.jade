@@ -9,7 +9,7 @@ html
 
 	body(ng-app='stlviewer', ng-controller='viewer')
 
-		div(stl-viewer, data='stl.triangles', orientation='view.orientation', zoom='view.zoom', width='view.size', height='view.size', projection='view.projection', bad-wireframe='view.wireframe')
+		div(stl-viewer, data='stl.triangles', orientation='view.orientation', zoom='view.zoom', width='view.size', height='view.size', projection='view.projection', bad-wireframe='view.wireframe', shader='view.shader')
 
 		.controls
 
@@ -60,6 +60,15 @@ html
 				button(ng-mousedown='methods.setZooming(-1);', ng-mouseup='methods.setZooming(0, 0);') -
 				input(disabled, type='text', value='{{methods.strZoom()}}')
 				button(ng-mousedown='methods.setZooming(+1);', ng-mouseup='methods.setZooming(0, 0);') +
+
+			.shader
+				label
+					span.section Visualisation:
+				form
+					span(ng-repeat='(key, value) in shaders')
+						label
+							input(type='radio', ng-model='view.shader', ng-value='key', name='shader')
+							| {{ value }}
 
 		form#uploader.modal-container(ng-controller='uploader')
 			.modal-center

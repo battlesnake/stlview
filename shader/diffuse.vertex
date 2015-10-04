@@ -1,40 +1,41 @@
+precision mediump float;
+
 attribute vec3 position;
 attribute vec3 normal;
+
 uniform mat4 projection;
 uniform mat4 model;
 uniform vec3 camera_position;
-uniform vec4 material_color;
-uniform vec3 light_position;
-uniform vec3 ambient_light_color;
-uniform vec3 diffuse_light_color;
-uniform vec3 specular_light_color;
-uniform float specular_exponent;
+
+varying vec3 normal_m;
+varying vec3 normal_w;
+
+varying vec3 position_w;
+varying vec3 position_e;
+
 varying vec4 color;
 
-float coslaw(vec3 a, vec3 b) {
-	return (1.0 + dot(normalize(a), normalize(b))) / 2.0;
+void calc_position() {
+	/* Model position of vertex */
+	vec3 position_m = position;
+	/* World position of vertex */
+	position_w = (model * vec4(position_m, 1.0)).xyz;
+	/* Position of vertex relative to camera (eye) */
+	position_e = (position_w - camera_position);
+	/* Projected position of vertex */
+	vec4 position_p = projection * vec4(position_e, 1.0);
+	/* Output */
+	gl_Position = position_p;
+}
+
+void calc_normal() {
+	/* Model direction of normal */
+	normal_m = normal;
+	/* World direction of normal */
+	normal_w = normalize(mat3(model) * normal_m);
 }
 
 void main() {
-	/* World position of vertex */
-	vec3 position_w = (model * vec4(position, 1.0)).xyz;
-	/* Position of vertex relative to camera (eye) */
-	vec3 position_e = (position_w - camera_position);
-	/* Projected position of vertex */
-	vec4 position_p = projection * vec4(position_e, 1.0);
-	/* World direction of normal */
-	vec3 normal_w = normalize(mat3(model) * normal);
-	/* Diffuse lighting */
-	vec3 diffuse_light = diffuse_light_color * coslaw(light_position, normal_w);
-	/* Specular lighting */
-	vec3 specular_light_dist = light_position - position_w;
-	vec3 specular_reflection_dir = reflect(-specular_light_dist, normal_w);
-	float specular_cosine = coslaw(-position_e, specular_reflection_dir);
-	vec3 specular_light = specular_light_color *
-		pow(specular_cosine, specular_exponent) /
-		dot(specular_light_dist, specular_light_dist);
-	/* Combine light colours */
-	vec3 light_color = ambient_light_color + diffuse_light + specular_light;
-	color = clamp(vec4(light_color, 1.0) * material_color, 0.0, 1.0);
-	gl_Position = position_p;
+	calc_position();
+	calc_normal();
 }

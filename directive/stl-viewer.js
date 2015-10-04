@@ -20,7 +20,9 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 			width: '=',
 			height: '=',
 			/* Bad wireframe */
-			badWireframe: '='
+			badWireframe: '=',
+			/* Shader */
+			shader: '='
 		},
 		link: link
 	};
@@ -49,6 +51,12 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 		var shader = null;
 		var aspect = 1;
 
+		var presetShaders = Object.preventExtensions({
+			diffuse: null,
+			depth: null,
+			normal: null
+		});
+
 		var transform = {
 			projection: null,
 			model: null
@@ -61,9 +69,14 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 
 		$q.all([
 				shaders.loadVertexShader('diffuse'),
-				shaders.loadFragmentShader('diffuse')
+				shaders.loadFragmentShader('diffuse'),
+				shaders.loadFragmentShader('depth'),
+				shaders.loadFragmentShader('normal')
 			]).then(function (res) {
-				shader = shaders.build('diffuse', 'diffuse');
+				presetShaders.diffuse = shaders.build('diffuse', 'diffuse');
+				presetShaders.depth = shaders.build('diffuse', 'depth');
+				presetShaders.normal = shaders.build('diffuse', 'normal');
+				shader = presetShaders.diffuse;
 				initShaders();
 				scope.$watch('zoom', viewChanged);
 				scope.$watch('orientation', viewChanged);
@@ -72,6 +85,7 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 				scope.$watch('data', dataChanged);
 				scope.$watch('projection', viewChanged);
 				scope.$watch('badWireframe', viewChanged);
+				scope.$watch('shader', shaderChanged);
 				dataChanged();
 			});
 
@@ -130,6 +144,22 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 				});
 		}
 
+		function shaderChanged() {
+			var newShader = presetShaders[scope.shader];
+			if (newShader === shader) {
+				return;
+			}
+			if (!newShader) {
+				throw new Error('Shader "' + scope.shader + '" does not exist');
+			}
+			if (shader) {
+				shader.disableAll();
+			}
+			shader = newShader;
+			initShaders();
+			deferRedraw();
+		}
+
 		function initShaders() {
 			shader.use();
 			shader.enableAll();
@@ -154,11 +184,12 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 				return;
 			}
 			var projection;
+			var camera_distance = -camera_position.data[2];
 			if (scope.projection === 'ortho' || scope.projection === 'orthographic' || !scope.projection) {
-				projection = new Matrix.Orthographic(-1*aspect, 1*aspect, -1, 1, 0, 10)
+				projection = new Matrix.Orthographic(-1*aspect, 1*aspect, -1, 1, camera_distance - 1, camera_distance + 1)
 					.scale(scope.zoom / 50);
 			} else if (scope.projection === 'perspective') {
-				projection = new Matrix.Camera35mm(aspect, scope.zoom, 0.1, 10);
+				projection = new Matrix.Camera35mm(aspect, scope.zoom, camera_distance - 1, camera_distance + 1);
 			} else {
 				throw new Error('Unknown projection: "' + scope.projection + '"');
 			}

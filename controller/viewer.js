@@ -10,7 +10,8 @@ function viewer($scope, Quaternion, $interval, $timeout, modelRepository) {
 		zoom: 50,
 		size: 540,
 		projection: 'orthographic',
-		wireframe: false
+		wireframe: false,
+		shader: 'diffuse'
 	};
 	$scope.projections = {
 		perspective: 'Perspective',
@@ -22,6 +23,11 @@ function viewer($scope, Quaternion, $interval, $timeout, modelRepository) {
 		reset: reset,
 		strZoom: strZoom,
 		loadModel: loadModel
+	};
+	$scope.shaders = {
+		diffuse: 'Diffuse',
+		depth: 'Depth',
+		normal: 'Normals'
 	};
 	var repository = $scope.repository = modelRepository;
 

@@ -77,16 +77,20 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 		function refreshLocation() {
 			location = this.updateLocation();
 			if (location === null) {
-				throw new Error('Failed to get shader ' + this.form + ' location for ' + type + ' ' + name);
+				console.info('Failed to get shader location for ' + [this.form, type, name].join(' '));
 			}
 		}
 
 		function getLocation() {
-			if (!location) {
+			if (location === undefined) {
 				this.refreshLocation();
 			}
 			return location;
 		}
+	}
+
+	function noLocation(loc) {
+		return loc === undefined || loc === null;
 	}
 
 	function ShaderAttribute(gl, program, name, type) {
@@ -100,7 +104,6 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 		this.disable = disable;
 		this.bind = bind;
 		this.set = set;
-
 		return Object.freeze(this);
 
 		function updateLocation() {
@@ -109,13 +112,23 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 		}
 
 		function enable() {
-			gl.enableVertexAttribArray(this.getLocation());
+			var location = this.getLocation();
+			if (noLocation(location)) {
+				return false;
+			}
+			gl.enableVertexAttribArray(location);
 			enabled = true;
+			return true;
 		}
 
 		function disable() {
-			gl.disableVertexAttribArray(this.getLocation());
+			var location = this.getLocation();
+			if (noLocation(location)) {
+				return false;
+			}
+			gl.disableVertexAttribArray(location);
 			enabled = false;
+			return true;
 		}
 
 		function bind(buffer) {
@@ -123,11 +136,16 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 				console.info(buffer);
 				throw new Error('Vertex buffer expected');
 			}
+			var location = this.getLocation();
+			if (noLocation(location)) {
+				return false;
+			}
 			if (!enabled) {
 				this.enable();
 			}
 			buffer.bind();
-			gl.vertexAttribPointer(this.getLocation(), buffer.width, buffer.typeCode, false, 0, 0);
+			gl.vertexAttribPointer(location, buffer.width, buffer.typeCode, false, 0, 0);
+			return true;
 		}
 
 		function set() {
@@ -160,7 +178,7 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 		}
 		var setter;
 		if (setterName.indexOf('Matrix') !== -1) {
-			setter = function (value) {
+			setter = function (location, value) {
 				if (!(value instanceof Matrix)) {
 					throw new Error('Matrix required');
 				}
@@ -169,16 +187,16 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 					throw new Error('Matrix is the wrong size');
 				}
 				value = value.transpose().data;
-				return setFunc.call(gl, this.getLocation(), gl.FALSE, new Float32Array(value));
+				return setFunc.call(gl, location, gl.FALSE, new Float32Array(value));
 			};
 		} else {
-			setter = function (value) {
+			setter = function (location, value) {
 				if (value instanceof Matrix) {
 					value = value.data;
 				} else if (typeof value === 'number') {
 					value = [value];
 				}
-				return setFunc.call(gl, this.getLocation(), new Float32Array(value));
+				return setFunc.call(gl, location, new Float32Array(value));
 			};
 		}
 
@@ -194,15 +212,35 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 		}
 
 		function setValue(value) {
+			var location = this.getLocation();
+			if (noLocation(location)) {
+				return false;
+			}
 			if (value instanceof Array) {
 				value = [].concat.apply([], value);
 			}
-			return setter.call(this, value);
+			setter.call(this, location, value);
+			return true;
 		}
 
 		function bind() {
 			throw new Error('Cannot <bind> shader uniform, use <set> instead');
 		}
+	}
+
+	function DummyVariable(gl, program, name, type) {
+		this.name = name;
+		this.type = type;
+		this.form = 'dummy';
+		this.getLocation = function () {};
+		this.refreshLocation = function () {};
+		this.updateLocation = function () {};
+		this.enable = function () {};
+		this.disable = function () {};
+		this.bind = function () {};
+		this.set = function () {};
+
+		return Object.freeze(this);
 	}
 
 	function ShaderProgram(gl, program, vs, fs) {
@@ -221,13 +259,17 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 		this.use = use;
 		this.get = getVariable;
 		this.enableAll = enableAll;
+		this.disableAll = disableAll;
 
 		return Object.freeze(this);
 
 		function getVariable(name) {
-			var v = vars['var_' + name];
+			var varName = 'var_' + name;
+			var v = vars[varName];
 			if (!v) {
-				throw new Error('Variable "' + name + '" does not exist');
+				console.warn('Variable "' + name + '" does not exist');
+				vars[varName] = new DummyVariable(gl, program, name, 'dummy');
+				return vars[varName];
 			}
 			return v;
 		}
@@ -236,6 +278,14 @@ function shader($cacheFactory, $http, $q, Matrix, VertexBuffer) {
 			varArray.forEach(function (v) {
 				if (v instanceof ShaderAttribute) {
 					v.enable();
+				}
+			});
+		}
+
+		function disableAll() {
+			varArray.forEach(function (v) {
+				if (v instanceof ShaderAttribute) {
+					v.disable();
 				}
 			});
 		}
