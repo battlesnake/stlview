@@ -1,3 +1,6 @@
 [submodule "class"]
 	path = class
 	url = git@github.com:battlesnake/webgl-utils.git
+[submodule "shader"]
+	path = shader
+	url = git@github.com:battlesnake/shader-library.git
