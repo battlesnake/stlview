@@ -26,6 +26,7 @@ function viewer($scope, Quaternion, $interval, $timeout, modelRepository) {
 	};
 	$scope.shaders = {
 		diffuse: 'Diffuse',
+		simple: 'Simple',
 		depth: 'Depth',
 		normal: 'Normals'
 	};

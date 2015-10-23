@@ -53,6 +53,7 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 
 		var presetShaders = Object.preventExtensions({
 			diffuse: null,
+			simple: null,
 			depth: null,
 			normal: null
 		});
@@ -70,10 +71,13 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 		$q.all([
 				shaders.loadVertexShader('diffuse'),
 				shaders.loadFragmentShader('diffuse'),
+				shaders.loadVertexShader('simple'),
+				shaders.loadFragmentShader('simple'),
 				shaders.loadFragmentShader('depth'),
 				shaders.loadFragmentShader('normal')
 			]).then(function (res) {
 				presetShaders.diffuse = shaders.build('diffuse', 'diffuse');
+				presetShaders.simple = shaders.build('simple', 'simple');
 				presetShaders.depth = shaders.build('diffuse', 'depth');
 				presetShaders.normal = shaders.build('diffuse', 'normal');
 				shader = presetShaders.diffuse;
