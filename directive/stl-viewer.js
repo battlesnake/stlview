@@ -166,7 +166,7 @@ function stlViewer($q, slowReduce, slowMap, ShaderRepository, VertexBuffer, Quat
 
 		function initShaders() {
 			shader.use();
-			shader.enableAll();
+			shader.enableAll(['vertex_color']);
 		}
 
 		function updateViewport() {
